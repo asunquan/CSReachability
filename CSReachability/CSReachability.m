@@ -66,6 +66,8 @@ static void CSReachabilityCallback(SCNetworkReachabilityRef target, SCNetworkRea
 @implementation CSReachability
 {
     SCNetworkReachabilityRef _reachabilityRef;
+    void(^networkChanged)(CSNetworkStatus status);
+    CSNetworkStatus previousStatus;
 }
 
 + (instancetype)reachabilityWithHostName:(NSString *)hostName
@@ -119,6 +121,44 @@ static void CSReachabilityCallback(SCNetworkReachabilityRef target, SCNetworkRea
 }
 
 
+- (void)networkStatusHasChanged:(void (^)(CSNetworkStatus))changed
+{
+    networkChanged = changed;
+    
+    previousStatus = self.currentReachabilityStatus;
+    
+    [self addNetworkChangedObserver];
+    
+    [self startNotifier];
+}
+
+- (void)addNetworkChangedObserver
+{
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(networkChanged:)
+                                                 name:kCSNetworkChangedNotification
+                                               object:nil];
+}
+
+- (void)networkChanged:(NSNotification *)notification
+{
+    CSNetworkStatus currentStatus = self.currentReachabilityStatus;
+    
+    if (networkChanged && previousStatus != currentStatus)
+    {
+        previousStatus = currentStatus;
+        
+        networkChanged(currentStatus);
+    }
+}
+
+- (void)removeNetworkChangedObserver
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                    name:kCSNetworkChangedNotification
+                                                  object:nil];
+}
+
 #pragma mark - Start and stop notifier
 
 - (BOOL)startNotifier
@@ -150,6 +190,9 @@ static void CSReachabilityCallback(SCNetworkReachabilityRef target, SCNetworkRea
 - (void)dealloc
 {
     [self stopNotifier];
+    
+    [self removeNetworkChangedObserver];
+    
     if (_reachabilityRef != NULL)
     {
         CFRelease(_reachabilityRef);

@@ -62,6 +62,13 @@ extern NSString *kCSNetworkChangedNotification;
 
 
 /**
+ 监测实时网络状态变化
+ 
+ @param changed 实时网络状态
+ */
+- (void)networkStatusHasChanged:(void(^)(CSNetworkStatus status))changed;
+
+/**
  开始监听网络状态变化通知
 
  @return 是否开启成功
